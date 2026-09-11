@@ -12,5 +12,5 @@ CREATE TABLE payout_requests (
     agent_commision NUMERIC(19, 2) NOT NULL,
     selected BOOLEAN NOT NULL
 );
-CREATE INDEX idx_payout_batches_created_at ON payout_batches(created_at, DESC);
+CREATE INDEX idx_payout_batches_created_at ON payout_batches(created_at);
 CREATE INDEX idx_payout_requests_batch_id ON payout_requests(batch_id);
