@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.example.kursi_ge_payout_optimizer.algorithm.OptimizationResult;
@@ -16,7 +19,8 @@ import com.example.kursi_ge_payout_optimizer.entity.PayoutBatch;
 import com.example.kursi_ge_payout_optimizer.entity.PayoutRequest;
 import com.example.kursi_ge_payout_optimizer.repository.PayoutBatchRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PayoutBatchService {
@@ -62,4 +66,36 @@ public class PayoutBatchService {
                 result.totalAgentCommission(), createdAt);
     }
 
+    private OptimizeBatchResponse toResponse(PayoutBatch batch) {
+        List<SelectedPayoutDto> selectedPayouts = batch.getPayoutRequests().stream()
+                .filter(PayoutRequest::isSelected)
+                .map(payout -> new SelectedPayoutDto(
+                        payout.getRequestReference(),
+                        payout.getPayoutAmount(),
+                        payout.getAgentCommission()))
+                .toList();
+
+        return new OptimizeBatchResponse(
+                batch.getId(),
+                selectedPayouts,
+                batch.getTotalFloatConsumed(),
+                batch.getTotalAgentCommission(),
+                batch.getCreatedAt());
+    }
+
+    @Transactional(readOnly = true)
+    public OptimizeBatchResponse getById(UUID batchId) {
+        PayoutBatch batch = repository.findById(batchId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Payout batch not found with id: " + batchId));
+
+        return toResponse(batch);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OptimizeBatchResponse> getAll(Pageable pageable) {
+        return repository.findAll(pageable)
+                .map(entity -> this.toResponse(entity));
+    }
 }
