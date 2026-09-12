@@ -27,7 +27,6 @@ public class PayoutOptimizer {
             List<PayoutCandidate> currentSelection,
             BigDecimal currentFloatConsumed,
             BigDecimal currentCommission) {
-        // Base case: every candidate has been considered.
         if (index == candidates.size()) {
             return new OptimizationResult(
                     List.copyOf(currentSelection),
@@ -67,27 +66,5 @@ public class PayoutOptimizer {
         }
 
         return bestWithoutCandidate;
-    }
-
-    public static void main(String[] args) {
-        PayoutOptimizer optimizer = new PayoutOptimizer();
-
-        List<PayoutCandidate> candidates = List.of(
-                new PayoutCandidate("req1", new BigDecimal("100"), new BigDecimal("10")),
-                new PayoutCandidate("req2", new BigDecimal("200"), new BigDecimal("20")),
-                new PayoutCandidate("req3", new BigDecimal("150"), new BigDecimal("15")),
-                new PayoutCandidate("req4", new BigDecimal("50"), new BigDecimal("5")));
-
-        BigDecimal availableFloat = new BigDecimal("300");
-
-        OptimizationResult result = optimizer.optimize(availableFloat, candidates);
-
-        System.out.println("Selected Payouts:");
-        for (PayoutCandidate candidate : result.selectedPayouts()) {
-            System.out.println(candidate.requestReference() + " - Amount: " + candidate.payoutAmount()
-                    + ", Commission: " + candidate.agentCommission());
-        }
-        System.out.println("Total Float Consumed: " + result.totalFloatConsumed());
-        System.out.println("Total Agent Commission: " + result.totalAgentCommission());
     }
 }
