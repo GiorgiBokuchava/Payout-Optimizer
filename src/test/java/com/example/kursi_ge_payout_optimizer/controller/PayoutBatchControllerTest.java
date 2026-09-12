@@ -1,6 +1,11 @@
 package com.example.kursi_ge_payout_optimizer.controller;
 
-import com.example.kursi_ge_payout_optimizer.repository.PayoutBatchRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,10 +14,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.example.kursi_ge_payout_optimizer.repository.PayoutBatchRepository;
+
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,6 +73,63 @@ class PayoutBatchControllerTest {
                 .andExpect(jsonPath("$.selectedPayouts.length()").value(2));
 
         assertEquals(1, repository.count());
+    }
+
+    @Test
+    void optimizeReturnsOkWhenNothingFits() throws Exception {
+        String requestBody = """
+                {
+                  "availablePayoutFloat": 1000,
+                  "payoutRequests": [
+                    {
+                      "requestReference": "PO-1",
+                      "payoutAmount": 5000,
+                      "agentCommission": 100
+                    }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/payout-batches/optimize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.selectedPayouts.length()").value(0))
+                .andExpect(jsonPath("$.totalAgentCommission").value(0));
+    }
+
+    @Test
+    void getBatchByIdReturnsPersistedBatch() throws Exception {
+        String requestBody = """
+                {
+                  "availablePayoutFloat": 5000,
+                  "payoutRequests": [
+                    {
+                      "requestReference": "PO-1",
+                      "payoutAmount": 4000,
+                      "agentCommission": 90
+                    }
+                  ]
+                }
+                """;
+
+        String response = mockMvc.perform(post("/api/v1/payout-batches/optimize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String batchId = new ObjectMapper()
+                .readTree(response)
+                .get("batchId")
+                .asString();
+
+        mockMvc.perform(get("/api/v1/payout-batches/" + batchId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.batchId").value(batchId))
+                .andExpect(jsonPath("$.totalAgentCommission").value(90));
     }
 
     @Test
